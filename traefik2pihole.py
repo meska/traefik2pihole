@@ -32,12 +32,36 @@ sentry_sdk.init(
 
 # Define the URL for the Traefik API endpoint
 TRAEFIK_API_URL = os.getenv("TRAEFIK_API_URL")
-# Load the IP addresses from the environment variable
-IP_ADDRESSES = os.getenv("SWARM_IP_ADDRESSES").split(",")
 # Load SSH credentials from environment variables
 SSH_HOST = "192.168.2.2"
 SSH_USER = os.getenv("SSH_USER")
 SSH_KEY_FILE = "ed25519_pihole"
+
+
+def get_swarm_ip_addresses():
+    try:
+        swarm_manager = os.getenv("SWARM_MANAGER_IP")
+        ssh = paramiko.SSHClient()
+        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+        ssh.connect(swarm_manager, username=SSH_USER, key_filename=SSH_KEY_FILE)
+
+        _, stdout, _ = ssh.exec_command("docker node ls --format '{{.Hostname}}'")
+        node_names = stdout.read().decode().splitlines()
+
+        ssh.close()
+        ip_addresses = []
+        for node_name in node_names:
+            ssh.connect(node_name, username=SSH_USER, key_filename=SSH_KEY_FILE)
+            _, stdout, _ = ssh.exec_command("hostname -I")
+            ip_address = stdout.read().decode().split()[0]
+            ip_addresses.append(ip_address)
+            ssh.close()
+
+        return ip_addresses
+
+    except paramiko.SSHException as e:
+        logging.error(f"Error connecting to SSH: {e}")
+        return []
 
 
 def get_hosts_for_entrypoint(entrypoint):
@@ -151,10 +175,11 @@ def upload_file_to_remote():
 
 if __name__ == "__main__":
     entry_point = "websecure"
+    ip_address = get_swarm_ip_addresses()
     hosts = get_hosts_for_entrypoint(entry_point)
 
     if hosts:
-        write_swarm_conf(hosts, IP_ADDRESSES)
+        write_swarm_conf(hosts, ip_address)
         upload_file_to_remote()
     else:
         logging.error(f"No hosts found for entrypoint '{entry_point}'")
