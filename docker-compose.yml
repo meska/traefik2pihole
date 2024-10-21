@@ -1,4 +1,8 @@
 version: '3.8'
 services:
   traefik2pihole:
+    build: .
     image: dr.meskatech.com/traefik2pihole:latest
+    container_name: traefik2pihole
+    volumes:
+      - /etc/localtime:/etc/localtime:ro

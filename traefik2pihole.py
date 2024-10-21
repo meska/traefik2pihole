@@ -1,12 +1,34 @@
+import logging
 import os
 import re
 
 import paramiko
 import requests
 from dotenv import load_dotenv
+import sentry_sdk
+from sentry_sdk.integrations.logging import LoggingIntegration
 
 # Load the environment variables from the .env file
 load_dotenv()
+
+# Configure logging to log to both a file and stderr
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[logging.StreamHandler()],
+)
+
+sentry_sdk.init(
+    dsn=os.getenv("SENTRY_DSN"),
+    integrations=[
+        LoggingIntegration(
+            level=logging.INFO,
+            event_level=logging.INFO,
+        ),
+    ],
+    traces_sample_rate=0.2,
+    profiles_sample_rate=0.2,
+)
 
 # Define the URL for the Traefik API endpoint
 TRAEFIK_API_URL = os.getenv("TRAEFIK_API_URL")
@@ -47,7 +69,7 @@ def get_hosts_for_entrypoint(entrypoint):
         return list(hosts)
 
     except requests.exceptions.RequestException as e:
-        print(f"Error connecting to Traefik API: {e}")
+        logging.error(f"Error connecting to Traefik API: {e}")
         return []
 
 
@@ -69,14 +91,14 @@ def upload_file_to_remote():
 
         # Load the SSH key from the file
         ssh_key = paramiko.Ed25519Key(filename=SSH_KEY_FILE)
-        print("SSH key loaded successfully.")
+        logging.info("SSH key loaded successfully.")
 
         # Establish SSH connection
         ssh = paramiko.SSHClient()
         ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        print("Connecting to SSH host...")
+        logging.info("Connecting to SSH host...")
         ssh.connect(SSH_HOST, username=SSH_USER, pkey=ssh_key)
-        print("SSH connection established.")
+        logging.info("SSH connection established.")
 
         # Use SFTP to check if the remote file exists and compare its content with the local file
         sftp = ssh.open_sftp()
@@ -88,18 +110,19 @@ def upload_file_to_remote():
             with open(local_file_path, "r") as local_file:
                 local_content = local_file.read()
             if remote_content == local_content:
-                print("No changes detected in 99-swarm.conf. Skipping upload.")
+                logging.info("No changes detected in 99-swarm.conf. Skipping upload.")
                 sftp.close()
                 ssh.close()
                 return
         except FileNotFoundError:
-            print("Remote file not found. Proceeding with upload.")
+            logging.info("Remote file not found. Proceeding with upload.")
 
         # Upload the file if it is different or does not exist
-        print("Uploading file...")
+        logging.info("Uploading file...")
+
         sftp.put(local_file_path, remote_file_path)
         sftp.close()
-        print("File uploaded successfully to /etc/dnsmasq.d/99-swarm.conf")
+        logging.info("File uploaded successfully to /etc/dnsmasq.d/99-swarm.conf")
 
         # Run the pihole-FTL --test command on the remote host
         _, _, stderr = ssh.exec_command("pihole-FTL --test")
@@ -111,19 +134,19 @@ def upload_file_to_remote():
             _, _, stderr = ssh.exec_command("service pihole-FTL restart")
             restart_error = stderr.read().decode()
             if restart_error:
-                print(f"Service restart failed: {restart_error}")
+                logging.error(f"Service restart failed: {restart_error}")
             else:
-                print("Service restarted successfully.")
+                logging.info("Service restarted successfully.")
         else:
-            print(f"Syntax check failed: {error}")
+            logging.error(f"Syntax check failed: {error}")
 
         ssh.close()
     except FileNotFoundError as fnf_error:
         print(fnf_error)
     except paramiko.SSHException as ssh_error:
-        print(f"SSH error: {ssh_error}")
+        logging.error(f"SSH error: {ssh_error}")
     except Exception as e:
-        print(f"Error uploading file: {e}")
+        logging.error(f"Error uploading file: {e}")
 
 
 if __name__ == "__main__":
@@ -134,4 +157,4 @@ if __name__ == "__main__":
         write_swarm_conf(hosts, IP_ADDRESSES)
         upload_file_to_remote()
     else:
-        print(f"No hosts found for entrypoint '{entry_point}'")
+        logging.error(f"No hosts found for entrypoint '{entry_point}'")
