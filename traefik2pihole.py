@@ -51,11 +51,15 @@ def get_swarm_ip_addresses():
         ssh.close()
         ip_addresses = []
         for node_name in node_names:
-            ssh.connect(node_name, username=SSH_USER, key_filename=SSH_KEY_FILE)
-            _, stdout, _ = ssh.exec_command("hostname -I")
-            ip_address = stdout.read().decode().split()[0]
-            ip_addresses.append(ip_address)
-            ssh.close()
+            try:
+                ssh.connect(node_name, username=SSH_USER, key_filename=SSH_KEY_FILE)
+                _, stdout, _ = ssh.exec_command("hostname -I")
+                ip_address = stdout.read().decode().split()[0]
+                ip_addresses.append(ip_address)
+                ssh.close()
+            except Exception as e:
+                logging.error(f"Error connecting to SSH: {node_name} {e}")
+                continue
 
         return ip_addresses
 
@@ -73,9 +77,7 @@ def get_hosts_for_entrypoint(entrypoint):
         routers = response.json()  # Parse JSON response
 
         hosts = set()
-        fqdn_pattern = re.compile(
-            r"^(?=.{1,253}$)(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,6}$"
-        )
+        fqdn_pattern = re.compile(r"^(?=.{1,253}$)(?:(?!-)[A-Za-z0-9-]{1,63}(?<!-)\.)+[A-Za-z]{2,6}$")
 
         # Iterate through routers to find those with the specified entrypoint
         for router in routers:
@@ -85,9 +87,7 @@ def get_hosts_for_entrypoint(entrypoint):
                     # Extract hosts
                     rule_hosts = rule.split("`")[1::2]
                     # Filter FQDN hosts and add to set
-                    fqdn_hosts = {
-                        host for host in rule_hosts if fqdn_pattern.match(host)
-                    }
+                    fqdn_hosts = {host for host in rule_hosts if fqdn_pattern.match(host)}
                     hosts.update(fqdn_hosts)
 
         return list(hosts)
@@ -176,7 +176,54 @@ def upload_file_to_remote():
 if __name__ == "__main__":
     entry_point = "websecure"
     ip_address = get_swarm_ip_addresses()
+    # ip_address = [
+    #                     "192.168.3.81",
+    #                     "192.168.3.82",
+    #                     "192.168.3.83",
+    #                     "192.168.3.84",
+    #                     "192.168.3.85",
+    #                     "192.168.3.86",
+    #                     "192.168.2.45",
+    #                     "192.168.2.209",
+    #                     "192.168.3.112",
+    #                     "192.168.2.94",
+    #                     "192.168.2.129",
+    #                     "192.168.2.130"
+    #                 ]
     hosts = get_hosts_for_entrypoint(entry_point)
+
+    other_hosts = [
+        "work.mecomsrl.com",
+        "my.mecom.work",
+        "thumbor.mecomsrl.com",
+        "dashboard.mecomsrl.com",
+        "swarm.mecom.lan",
+        "work",
+        "workx3",
+        "grafana",
+        "teamcity.mecomsrl.com",
+        "minio.mecomsrl.com",
+        "couchdb.mecomsrl.com",
+        "outline.mecomsrl.com",
+        "ts.mecomsrl.com",
+        "auth.mecomsrl.com",
+        "matrix.mecomsrl.com",
+        "dash.mecomsrl.com",
+        "oc.mecomsrl.com",
+        "collabora.mecomsrl.com",
+        "wopi.mecomsrl.com",
+        "onlyoffice.mecomsrl.com",
+        "schemasxmlsoap.mecomsrl.com",
+        "redis",
+        "redis.mecom.lan",
+        "uptime",
+        "uptime.mecomsrl.com",
+    ]
+
+    # merge hosts with other_hosts
+    hosts = hosts + other_hosts
+    # remove duplicates
+    hosts = list(dict.fromkeys(hosts))
 
     if hosts:
         write_swarm_conf(hosts, ip_address)

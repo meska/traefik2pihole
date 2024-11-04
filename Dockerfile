@@ -9,7 +9,7 @@ RUN pip install poetry && poetry install
 COPY . .
 
 # Add the cron job and create the log file
-RUN echo "0 * * * * cd /app && poetry run python traefik2pihole.py >> /var/log/cron.log 2>&1" > /etc/cron.d/traefik2pihole && \
+RUN echo "0 */3 * * * cd /app && /usr/local/bin/poetry run python traefik2pihole.py >> /var/log/cron.log 2>&1" > /etc/cron.d/traefik2pihole && \
     chmod 0644 /etc/cron.d/traefik2pihole && \
     crontab /etc/cron.d/traefik2pihole && \
     touch /var/log/cron.log
