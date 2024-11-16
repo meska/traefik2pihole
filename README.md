@@ -10,16 +10,14 @@ Questo progetto è un sistema automatizzato per gestire la configurazione di Pi-
 
 ## Requisiti
 
-- Python 3.x
-- Moduli Python: `paramiko`, `requests`, `python-dotenv`
-- Un file `.env` con le seguenti variabili:
-  - `TRAEFIK_API_URL`: URL dell'API di Traefik
-  - `SWARM_IP_ADDRESSES`: Indirizzi IP del cluster Swarm, separati da virgole
-  - `SSH_USER`: Nome utente per la connessione SSH
-- Una chiave SSH per l'accesso al server remoto
+-   Python 3.x
+-   Moduli Python: `paramiko`, `requests`, `python-dotenv`
+-   Un file `.env` (vedere .env.example):
+-   Una chiave SSH per l'accesso al server remoto
 
 ## Utilizzo
 
 1. **Installazione delle Dipendenze**:
-   ```sh
-   pip install -r requirements.txt
+    ```sh
+    poetry install
+    ```

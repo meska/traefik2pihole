@@ -11,7 +11,7 @@ load_dotenv()
 SSH_USER = "root"
 PUBLIC_KEY_FILE = "ed25519_pihole.pub"
 
-swarm_manager = os.getenv("SWARM_MANAGER_IP")
+swarm_manager = os.getenv("SWARM_MANAGER_IP", "")
 ssh = paramiko.SSHClient()
 ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 ssh.connect(swarm_manager, username=SSH_USER)
