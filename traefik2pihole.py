@@ -57,6 +57,7 @@ def get_swarm_ip_addresses():
                 ip_address = stdout.read().decode().split()[0]
                 ip_addresses.append(ip_address)
                 ssh.close()
+                print("Added IP address: ", ip_address, " for node: ", node_name)
             except Exception as e:
                 logging.error(f"Error connecting to SSH: {node_name} {e}")
                 continue
@@ -174,6 +175,10 @@ def upload_file_to_remote():
 
 
 if __name__ == "__main__":
+
+    if os.path.exists("99-swarm.conf"):
+        os.remove("99-swarm.conf")
+
     entry_point = "websecure"
     ip_address = get_swarm_ip_addresses()
     # ip_address = [
@@ -209,10 +214,7 @@ if __name__ == "__main__":
         "auth.mecomsrl.com",
         "matrix.mecomsrl.com",
         "dash.mecomsrl.com",
-        "oc.mecomsrl.com",
-        "collabora.mecomsrl.com",
         "wopi.mecomsrl.com",
-        "onlyoffice.mecomsrl.com",
         "schemasxmlsoap.mecomsrl.com",
         "redis",
         "redis.mecom.lan",
