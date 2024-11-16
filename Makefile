@@ -10,4 +10,5 @@ deploy_old: build
 remote = root@python-scripts
 
 deploy:
-	ssh $(remote) -C "cd /opt/timing2paprika && git pull";\	
+	@scp .env $(remote):/opt/traefik2pihole/.env ;\
+	ssh $(remote) -C "cd /opt/traefik2pihole && git pull";
