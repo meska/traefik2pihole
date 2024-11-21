@@ -188,16 +188,25 @@ if __name__ == "__main__":
     ip_address = get_swarm_ip_addresses()
 
     hosts = get_hosts_for_entrypoint(entry_point)
+    print("Hosts: ", hosts)
     other_hosts = os.getenv("OTHER_HOSTS", "")
+    print("Other hosts: ", other_hosts)
     if other_hosts:
         other_hosts = other_hosts.split(",")
     else:
         other_hosts = []
 
+    blacklisted_hosts = os.getenv("BLACKLISTED_HOSTS", "")
+    if blacklisted_hosts:
+        blacklisted_hosts = blacklisted_hosts.split(",")
+        hosts = [host for host in hosts if host not in blacklisted_hosts]
+        other_hosts = [host for host in other_hosts if host not in blacklisted_hosts]
+
     # merge hosts with other_hosts
     hosts = hosts + other_hosts
     # remove duplicates
     hosts = list(dict.fromkeys(hosts))
+    print("Hosts: ", hosts)
 
     if hosts:
         write_swarm_conf(hosts, ip_address)
